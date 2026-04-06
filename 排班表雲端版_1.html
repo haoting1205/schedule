@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>餐廳員工排班表 ─ 雲端版</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222637;--surface3:#2a2f45;
+  --border:#2e3450;--border2:#3d4463;
+  --blue:#4f8ef7;--blue2:#2d6be4;--blue-dim:#1e3a6e;
+  --gold:#f5c842;--gold-dim:#3d3010;
+  --green:#3dd68c;--green-dim:#0e3320;
+  --red:#f05a5a;--red-dim:#3d1010;
+  --orange:#f5934a;--orange-dim:#3d2010;
+  --purple:#a78bfa;--purple-dim:#2d1f5e;
+  --teal:#38bdf8;--teal-dim:#0c2e3d;
+  --text:#e8eaf6;--text2:#9ba3c4;--text3:#5a6280;
+  --font:'Noto Sans TC',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --radius:8px;--radius2:12px;--radius3:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:100vh}
+/* ─── Setup Screen ─── */
+#setup-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.setup-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius3);padding:40px;width:100%;max-width:520px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.setup-logo{font-family:var(--mono);font-size:11px;color:var(--blue);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px}
+.setup-title{font-size:24px;font-weight:700;margin-bottom:8px}
+.setup-sub{color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:32px}
+.setup-step{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--blue-dim);color:var(--blue);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-text{color:var(--text2);font-size:12px;line-height:1.6}
+.step-text a{color:var(--blue);text-decoration:none}
+.step-text code{background:var(--surface3);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--teal)}
+.setup-divider{border:none;border-top:1px solid var(--border);margin:24px 0}
+.setup-label{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:8px}
+.setup-input{width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border .2s}
+.setup-input:focus{border-color:var(--blue)}
+.setup-textarea{min-height:140px;resize:vertical;line-height:1.7}
+.btn-primary{width:100%;padding:13px;background:var(--blue2);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer;margin-top:16px;transition:background .2s}
+.btn-primary:hover{background:var(--blue)}
+.setup-demo{text-align:center;margin-top:16px;font-size:12px;color:var(--text3)}
+.setup-demo a{color:var(--blue);cursor:pointer;text-decoration:none}
+/* ─── Main App ─── */
+#app{display:none;flex-direction:column;min-height:100vh}
+/* Toolbar */
+.toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+.toolbar-brand{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--blue);letter-spacing:1px;white-space:nowrap}
+.toolbar-sep{width:1px;height:20px;background:var(--border2)}
+.ctrl-group{display:flex;align-items:center;gap:6px}
+.ctrl-label{font-size:11px;color:var(--text3);white-space:nowrap}
+.ctrl-select{background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:5px 10px;font-size:12px;font-family:var(--font);cursor:pointer;outline:none}
+.ctrl-select:focus{border-color:var(--blue)}
+.badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px}
+.badge-blue{background:var(--blue-dim);color:var(--blue)}
+.badge-green{background:var(--green-dim);color:var(--green)}
+.badge-red{background:var(--red-dim);color:var(--red)}
+.sync-status{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.sync-dot.live{background:var(--green);box-shadow:0 0 6px var(--green)}
+/* Table area */
+.table-wrap{overflow-x:auto;padding:12px 16px;flex:1}
+.sch-table{border-collapse:collapse;font-size:11px;white-space:nowrap;min-width:100%}
+/* Header rows */
+.th-label{background:var(--surface2);border:1px solid var(--border);padding:6px 10px;font-weight:600;color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;text-align:left;position:sticky;left:0;z-index:10}
+.th-date{background:var(--surface2);border:1px solid var(--border);padding:5px 4px;text-align:center;font-weight:600;font-size:10px;min-width:62px;color:var(--text)}
+.th-date.weekend{background:#1e1530;color:#c084fc}
+.th-date.holiday{background:#2a1010;color:var(--red)}
+.th-dow{background:var(--surface);border:1px solid var(--border);padding:3px 4px;text-align:center;font-size:10px;color:var(--text3)}
+.th-dow.weekend{color:#c084fc}
+.th-dow.holiday{color:var(--red);font-weight:700}
+.th-sum{background:var(--surface2);border:1px solid var(--border);padding:5px 8px;text-align:center;font-size:9px;font-weight:700;color:var(--gold);white-space:nowrap}
+/* Employee rows */
+.emp-meta{background:var(--surface);border:1px solid var(--border);padding:5px 10px;position:sticky;left:0;z-index:5}
+.emp-name{font-weight:700;font-size:12px;color:var(--text)}
+.emp-role{font-size:10px;color:var(--text3);display:block}
+.emp-salary-label{font-size:9px;font-family:var(--mono);display:block;margin-top:2px}
+.type-幹部{color:var(--gold)}
+.type-正職{color:var(--blue)}
+.type-兼職{color:var(--green)}
+/* Day cell */
+.day-cell{border:1px solid var(--border);text-align:center;vertical-align:middle;padding:2px;cursor:pointer;transition:background .1s;min-width:62px}
+.day-cell:hover{background:var(--surface3)}
+.day-cell.editing{background:var(--blue-dim);border-color:var(--blue)}
+.day-cell.weekend{background:#120d1e}
+.day-cell.holiday{background:#1a0d0d}
+.cell-leave{font-size:11px;font-weight:700;padding:4px 0}
+.cell-leave.例假{color:var(--green)}
+.cell-leave.休假{color:var(--blue)}
+.cell-leave.國假{color:var(--orange)}
+.cell-leave.補休{color:var(--purple)}
+.cell-work{line-height:1.4}
+.cell-time{font-family:var(--mono);font-size:10px;color:var(--teal)}
+.cell-hours{font-size:9px;color:var(--text3)}
+.cell-sal{font-size:9px;font-family:var(--mono);color:var(--gold)}
+/* Hours row */
+.hours-cell{border:1px solid var(--border);text-align:center;padding:3px;background:var(--surface)}
+.hours-val{font-family:var(--mono);font-size:10px;color:var(--teal)}
+.hours-warn{background:var(--red-dim);color:var(--red)}
+/* Summary cells */
+.sum-cell{border:1px solid var(--border);text-align:right;padding:4px 8px;background:var(--surface)}
+.sum-val{font-family:var(--mono);font-size:10px;color:var(--text)}
+.sum-diff{font-size:9px}
+.sum-diff.pos{color:var(--green)}
+.sum-diff.neg{color:var(--red)}
+/* Section rows */
+.section-row td{background:var(--surface2);padding:4px 10px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.metric-cell{border:1px solid var(--border);text-align:center;padding:3px 4px;background:var(--surface)}
+.metric-val{font-family:var(--mono);font-size:10px}
+.metric-val.gold{color:var(--gold)}
+.metric-val.blue{color:var(--teal)}
+.metric-val.green{color:var(--green)}
+.metric-val.red{color:var(--red)}
+.rev-input{width:100%;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:10px;text-align:center;padding:2px;cursor:pointer}
+.rev-input:focus{background:var(--surface3);border-radius:4px}
+/* Editor panel */
+#editor{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:2px solid var(--blue);padding:16px 20px;display:none;z-index:200;box-shadow:0 -12px 40px rgba(0,0,0,.6)}
+.editor-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.editor-title{font-size:14px;font-weight:700;color:var(--text)}
+.editor-close{background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:3px 10px;color:var(--text2);cursor:pointer;font-size:12px}
+.type-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.type-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font)}
+.type-btn.active-例假{background:var(--green-dim);border-color:var(--green);color:var(--green);font-weight:700}
+.type-btn.active-休假{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);font-weight:700}
+.type-btn.active-國假{background:var(--orange-dim);border-color:var(--orange);color:var(--orange);font-weight:700}
+.type-btn.active-補休{background:var(--purple-dim);border-color:var(--purple);color:var(--purple);font-weight:700}
+.type-btn.active-上班{background:var(--teal-dim);border-color:var(--teal);color:var(--teal);font-weight:700}
+.time-area{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.time-group{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.time-select{background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:5px 8px;font-size:13px;font-family:var(--mono);cursor:pointer;outline:none}
+.time-select:focus{border-color:var(--blue)}
+.calc-strip{display:flex;gap:20px;flex-wrap:wrap;padding:10px 14px;background:var(--surface3);border-radius:var(--radius);margin-bottom:14px}
+.calc-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+.calc-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.calc-val{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text)}
+.calc-val.ot{color:var(--orange)}
+.law-note{font-size:10px;color:var(--text3);line-height:1.6;margin-bottom:14px}
+.editor-btns{display:flex;gap:8px}
+.btn-apply{padding:8px 28px;background:var(--blue2);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s}
+.btn-apply:hover{background:var(--blue)}
+.btn-cancel{padding:8px 20px;background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:13px;cursor:pointer}
+/* Warning col */
+.warn-ok{font-size:10px;color:var(--green)}
+.warn-bad{font-size:10px;color:var(--red);font-weight:700}
+/* Misc */
+.sticky-left{position:sticky;left:0;z-index:5}
+.sum-header{background:var(--surface2);border:1px solid var(--border);padding:5px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.5px;color:var(--text3);text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<!-- ═══ SETUP SCREEN ═══ -->
+<div id="setup-screen">
+<div class="setup-card">
+  <div class="setup-logo">⬡ 餐廳排班系統 v7.0</div>
+  <div class="setup-title">連結 Firebase 雲端資料庫</div>
+  <div class="setup-sub">第一次使用需要設定 Firebase 專案。資料將即時同步到雲端，任何裝置都能存取。</div>
+
+  <div class="setup-step">
+    <div class="step-num">1</div>
+    <div class="step-text">前往 <a href="https://console.firebase.google.com" target="_blank">Firebase Console</a>，建立新專案（免費方案即可）</div>
+  </div>
+  <div class="setup-step">
+    <div class="step-num">2</div>
+    <div class="step-text">專案建立後，點選「新增應用程式」→ 選 <code>&lt;/&gt; 網頁</code>，取得設定碼</div>
+  </div>
+  <div class="setup-step">
+    <div class="step-num">3</div>
+    <div class="step-text">左側選單「建構」→「Realtime Database」→「建立資料庫」→ 選擇亞洲區域，規則設為<code>測試模式</code></div>
+  </div>
+  <div class="setup-step">
+    <div class="step-num">4</div>
+    <div class="step-text">將下方的 Firebase 設定貼入，按「連結雲端」即完成</div>
+  </div>
+
+  <hr class="setup-divider">
+
+  <div class="setup-label">Firebase 設定碼（firebaseConfig 物件）</div>
+  <textarea class="setup-input setup-textarea" id="firebase-config-input" placeholder='貼入範例：
+{
+  "apiKey": "AIzaSy...",
+  "authDomain": "my-app.firebaseapp.com",
+  "databaseURL": "https://my-app-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "projectId": "my-app",
+  "storageBucket": "my-app.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abc..."
+}'></textarea>
+
+  <button class="btn-primary" onclick="connectFirebase()">連結雲端並開啟排班表</button>
+  <div class="setup-demo">或者 <a onclick="useDemoMode()">使用本機示範模式</a>（資料存於此裝置，無法跨裝置）</div>
+</div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div id="app">
+  <div class="toolbar">
+    <div class="toolbar-brand">⬡ 排班雲端版</div>
+    <div class="toolbar-sep"></div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">制度</span>
+      <select class="ctrl-select" id="schedule-type" onchange="refreshTable()">
+        <option>一般 (做五休二)</option>
+        <option>四週變形工時</option>
+      </select>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">民國</span>
+      <select class="ctrl-select" id="sel-year" onchange="refreshTable()"></select>
+      <span class="ctrl-label">年</span>
+      <select class="ctrl-select" id="sel-month" onchange="refreshTable()"></select>
+      <span class="ctrl-label">月</span>
+    </div>
+    <div class="sync-status" id="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text">未連線</span>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="sch-table" id="sch-table"></table>
+  </div>
+</div>
+
+<!-- ═══ EDITOR PANEL ═══ -->
+<div id="editor">
+  <div class="editor-head">
+    <span class="editor-title" id="editor-title">選擇儲存格</span>
+    <button class="editor-close" onclick="closeEditor()">✕ 關閉</button>
+  </div>
+  <div class="type-btns">
+    <button class="type-btn" onclick="setEType('上班')">上班</button>
+    <button class="type-btn" onclick="setEType('例假')">例假</button>
+    <button class="type-btn" onclick="setEType('休假')">休假</button>
+    <button class="type-btn" onclick="setEType('國假')">國假</button>
+    <button class="type-btn" onclick="setEType('補休')">補休</button>
+  </div>
+  <div id="time-area">
+    <div class="time-area">
+      <div class="time-group">上班 <select id="e-sh" class="time-select" onchange="editorCalc()"></select> 時 <select id="e-sm" class="time-select" onchange="editorCalc()"></select> 分</div>
+      <div class="time-group">下班 <select id="e-eh" class="time-select" onchange="editorCalc()"></select> 時 <select id="e-em" class="time-select" onchange="editorCalc()"></select> 分</div>
+    </div>
+    <div class="calc-strip">
+      <div class="calc-item"><span class="calc-label">有效工時</span><span class="calc-val" id="cv-eff">─</span></div>
+      <div class="calc-item"><span class="calc-label">正常</span><span class="calc-val" id="cv-reg">─</span></div>
+      <div class="calc-item"><span class="calc-label">加班</span><span class="calc-val ot" id="cv-ot">─</span></div>
+      <div class="calc-item"><span class="calc-label">休息扣除</span><span class="calc-val" id="cv-brk">─</span></div>
+    </div>
+    <div class="law-note" id="law-note"></div>
+  </div>
+  <div class="editor-btns">
+    <button class="btn-apply" onclick="applyEditor()">✓ 套用</button>
+    <button class="btn-cancel" onclick="closeEditor()">取消</button>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-database-compat.min.js"></script>
+<script>
+// ═══ DATA ═══
+const LEAVE = ['例假','休假','國假','補休'];
+const DOW_ZH = ['日','一','二','三','四','五','六'];
+const TYPE_MAP = {
+  '店長':'幹部','儲備店長':'幹部','副店長':'幹部','儲備幹部':'幹部',
+  '內場正職人員':'正職','外場正職人員':'正職',
+  '兼職':'兼職','實習生':'兼職'
+};
+const SALARY_MAP = {'幹部':45000,'正職':35000,'兼職':200};
+const HOLIDAYS = [
+  '2025-01-01','2025-01-27','2025-01-28','2025-01-29','2025-01-30','2025-01-31',
+  '2025-02-01','2025-02-02','2025-02-28','2025-04-04','2025-04-05','2025-05-01',
+  '2025-05-31','2025-10-06','2025-10-10',
+  '2026-01-01','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20',
+  '2026-02-21','2026-02-22','2026-02-28','2026-04-03','2026-04-04','2026-04-05',
+  '2026-05-01','2026-06-25','2026-09-25','2026-10-09','2026-10-10',
+  '2027-01-01','2027-02-05','2027-02-06','2027-02-07','2027-02-08','2027-02-09',
+  '2027-02-10','2027-02-11','2027-02-28','2027-04-05','2027-05-01',
+  '2027-06-14','2027-09-15','2027-10-10'
+].reduce((s,d)=>{s.add(d);return s},new Set());
+
+const INIT_STAFF = [
+  {id:'e1',name:'徐美玲',role:'儲備店長',sh:9,sm:0,eh:17,em:0},
+  {id:'e2',name:'陳雅芳',role:'外場正職人員',sh:9,sm:30,eh:17,em:30},
+  {id:'e3',name:'林冠廷',role:'外場正職人員',sh:11,sm:0,eh:19,em:0},
+  {id:'e4',name:'王建志',role:'副店長',sh:9,sm:0,eh:17,em:0},
+  {id:'e5',name:'張偉程',role:'內場正職人員',sh:9,sm:0,eh:17,em:0},
+  {id:'e6',name:'李佳穎',role:'內場正職人員',sh:9,sm:30,eh:17,em:30},
+  {id:'e7',name:'劉怡君',role:'兼職',sh:11,sm:0,eh:19,em:0},
+  {id:'e8',name:'郭志遠',role:'實習生',sh:8,sm:0,eh:16,em:0},
+];
+
+// ═══ STATE ═══
+let db = null; let demoMode = false;
+let schedData = {};  // { empId: { 'YYYY-MM-DD': {type,sh,sm,eh,em} } }
+let revenueData = {}; // { 'YYYY-MM-DD': { 現金,信用卡,行動支付,外送平台,訂單,其他 } }
+let staff = JSON.parse(JSON.stringify(INIT_STAFF));
+let editEmp=null, editDate=null, editType='上班';
+let curYear=115, curMonth=4;
+
+// ═══ FIREBASE ═══
+function connectFirebase(){
+  const raw = document.getElementById('firebase-config-input').value.trim();
+  try{
+    const cleaned = raw.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g,(m,q1,k,q2)=>`"${k}":`);
+    const cfg = JSON.parse(cleaned.startsWith('{') ? cleaned : `{${cleaned}}`);
+    if(!cfg.databaseURL) throw new Error('缺少 databaseURL');
+    firebase.initializeApp(cfg);
+    db = firebase.database();
+    db.ref('.info/connected').on('value', snap=>{
+      const ok = snap.val();
+      document.getElementById('sync-dot').className='sync-dot'+(ok?' live':'');
+      document.getElementById('sync-text').textContent=ok?'雲端同步中':'嘗試連線...';
+    });
+    localStorage.setItem('fb_config', JSON.stringify(cfg));
+    startApp();
+  }catch(e){
+    alert('設定碼解析失敗：'+e.message+'\n請確認貼入的是完整的 JSON 物件');
+  }
+}
+function useDemoMode(){
+  demoMode = true;
+  document.getElementById('sync-dot').className='sync-dot';
+  document.getElementById('sync-text').textContent='本機模式';
+  const saved = localStorage.getItem('sched_demo');
+  if(saved) try{ const d=JSON.parse(saved); schedData=d.sched||{}; revenueData=d.rev||{}; }catch(e){}
+  startApp();
+}
+function saveDemo(){
+  if(demoMode) localStorage.setItem('sched_demo',JSON.stringify({sched:schedData,rev:revenueData}));
+}
+
+function startApp(){
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  // Populate year/month selects
+  const sy=document.getElementById('sel-year');
+  const sm=document.getElementById('sel-month');
+  for(let y=110;y<=122;y++){const o=document.createElement('option');o.value=y;o.textContent=y;if(y===115)o.selected=true;sy.appendChild(o);}
+  for(let m=1;m<=12;m++){const o=document.createElement('option');o.value=m;o.textContent=m;if(m===4)o.selected=true;sm.appendChild(o);}
+  // Editor selects
+  const sh=document.getElementById('e-sh'),sm_=document.getElementById('e-sm');
+  const eh=document.getElementById('e-eh'),em=document.getElementById('e-em');
+  for(let h=5;h<=23;h++){[sh,eh].forEach(s=>{const o=document.createElement('option');o.value=h;o.textContent=String(h).padStart(2,'0');s.appendChild(o);});}
+  [0,30].forEach(m_=>{[sm_,em].forEach(s=>{const o=document.createElement('option');o.value=m_;o.textContent=String(m_).padStart(2,'0');s.appendChild(o);});});
+  if(db){
+    db.ref('schedule').on('value', snap=>{schedData=snap.val()||{};refreshTable();});
+    db.ref('revenue').on('value', snap=>{revenueData=snap.val()||{};refreshTable();});
+  } else { refreshTable(); }
+  // Check saved config
+  const saved=localStorage.getItem('fb_config');
+  if(!saved && !demoMode) return;
+}
+
+// Auto-reconnect
+window.addEventListener('load', ()=>{
+  const saved=localStorage.getItem('fb_config');
+  if(saved){
+    try{
+      document.getElementById('firebase-config-input').value=saved;
+      connectFirebase();
+    }catch(e){}
+  }
+});
+
+// ═══ CALCULATIONS ═══
+function parseH(h,m){return h+m/60;}
+function calcHours(sh,sm,eh,em){
+  const dur=parseH(eh,em)-parseH(sh,sm);
+  if(dur<=0)return{eff:0,reg:0,ot:0,brk:0};
+  const brk=dur>8?1:dur>4?0.5:0;
+  const eff=Math.max(0,dur-brk);
+  return{eff,reg:Math.min(eff,8),ot:Math.max(0,eff-8),brk};
+}
+function calcDailySalary(empType, eff, isLeave){
+  const typ = TYPE_MAP[empType]||'兼職';
+  const sal = SALARY_MAP[typ]||200;
+  if(typ==='兼職') return isLeave ? 0 : Math.round(sal*eff*10)/10;
+  // Monthly: 月薪/30 + OT premium
+  const base = sal/30;
+  const ot = isLeave ? 0 : Math.max(0,eff-8);
+  const hrRate = sal/240;
+  const otPay = Math.min(ot,2)*hrRate*0.33 + Math.max(0,ot-2)*hrRate*0.67;
+  return Math.round((base+otPay)*10)/10;
+}
+function fmtH(v){return v===0?'0h':v%1===0?v+'h':v.toFixed(1)+'h';}
+function fmtMoney(v){return Math.round(v).toLocaleString();}
+function dateKey(y,m,d){
+  const gy=y+1911;
+  return `${gy}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function daysInMonth(year,month){
+  return new Date(year+1911,month,0).getDate();
+}
+function isWeekend(year,month,day){
+  const w=new Date(year+1911,month-1,day).getDay();
+  return w===0||w===6;
+}
+function isHoliday(year,month,day){
+  return HOLIDAYS.has(dateKey(year,month,day));
+}
+function getCell(empId,dk){
+  return (schedData[empId]||{})[dk]||null;
+}
+function setCell(empId,dk,val){
+  if(!schedData[empId]) schedData[empId]={};
+  schedData[empId][dk]=val;
+  if(db) db.ref(`schedule/${empId}/${dk}`).set(val);
+  else saveDemo();
+}
+function getRevenue(dk){return (revenueData[dk])||{現金:0,信用卡:0,行動支付:0,外送平台:0,訂單:0,其他:0};}
+function setRevenue(dk,field,val){
+  if(!revenueData[dk]) revenueData[dk]={現金:0,信用卡:0,行動支付:0,外送平台:0,訂單:0,其他:0};
+  revenueData[dk][field]=val;
+  if(db) db.ref(`revenue/${dk}/${field}`).set(val);
+  else saveDemo();
+}
+
+// ═══ TABLE RENDER ═══
+function refreshTable(){
+  const y=+document.getElementById('sel-year').value;
+  const m=+document.getElementById('sel-month').value;
+  curYear=y; curMonth=m;
+  const days=daysInMonth(y,m);
+  const STD=176;
+  const tb=document.getElementById('sch-table');
+  const LEAVE_COLORS={'例假':'#3dd68c','休假':'#4f8ef7','國假':'#f5934a','補休':'#a78bfa'};
+
+  // ─ Build header ─
+  let h=`<thead>`;
+  // Row 1: date
+  h+=`<tr><th class="th-label" rowspan="2" style="min-width:160px">員工</th>`;
+  for(let d=1;d<=days;d++){
+    const dk=dateKey(y,m,d);
+    const wk=isWeekend(y,m,d); const hol=isHoliday(y,m,d);
+    const cls=hol?'holiday':wk?'weekend':'';
+    h+=`<th class="th-date ${cls}">${m}/${d}</th>`;
+  }
+  h+=`<th class="th-sum">本月<br>工時</th><th class="th-sum">月薪資</th><th class="th-sum">例假</th><th class="th-sum">休假</th><th class="th-sum">國假</th><th class="th-sum">補休</th><th class="th-sum">警示</th></tr>`;
+  // Row 2: DOW
+  h+=`<tr>`;
+  for(let d=1;d<=days;d++){
+    const dt=new Date(y+1911,m-1,d);
+    const wk=isWeekend(y,m,d); const hol=isHoliday(y,m,d);
+    h+=`<th class="th-dow ${hol?'holiday':wk?'weekend':''}">(${DOW_ZH[dt.getDay()]})</th>`;
+  }
+  h+=`<th class="sum-header">vs ${STD}h</th><th class="sum-header">(元)</th><th class="sum-header">天</th><th class="sum-header">天</th><th class="sum-header">天</th><th class="sum-header">天</th><th class="sum-header"></th></tr></thead>`;
+
+  // ─ Employee rows ─
+  h+=`<tbody>`;
+  const dailyHours=new Array(days+1).fill(0);
+  const dailySalary=new Array(days+1).fill(0);
+  const dailyCount=new Array(days+1).fill(0);
+
+  for(const emp of staff){
+    const empType=emp.role;
+    const typ=TYPE_MAP[empType]||'兼職';
+    const sal=SALARY_MAP[typ]||200;
+    const salLabel=typ==='兼職'?`${sal}元/時`:`${(sal/1000).toFixed(0)}K/月`;
+    let totalEff=0,totalSal=0,L1=0,L2=0,L3=0,L4=0;
+
+    let row=`<tr>`;
+    row+=`<td class="emp-meta sticky-left">
+      <span class="emp-name">${emp.name}</span>
+      <span class="emp-role">${empType}</span>
+      <span class="emp-salary-label type-${typ}">${salLabel}</span>
+    </td>`;
+
+    for(let d=1;d<=days;d++){
+      const dk=dateKey(y,m,d);
+      const cell=getCell(emp.id,dk);
+      const wk=isWeekend(y,m,d); const hol=isHoliday(y,m,d);
+      let bgCls=hol?'holiday':wk?'weekend':'';
+
+      if(!cell){
+        // Default: off day on Sunday/holiday, work otherwise
+        const dt=new Date(y+1911,m-1,d);
+        if(dt.getDay()===0){
+          row+=`<td class="day-cell ${bgCls}" onclick="openEditor('${emp.id}','${dk}')">
+            <div class="cell-leave 例假" style="color:${LEAVE_COLORS['例假']}">例假</div></td>`;
+          L1++;
+        } else {
+          const h_=emp.sh+emp.sm/60; const e_=emp.eh+emp.em/60;
+          const hrs=calcHours(emp.sh,emp.sm,emp.eh,emp.em);
+          const dsal=calcDailySalary(empType,hrs.eff,false);
+          dailyHours[d]+=hrs.eff; dailySalary[d]+=dsal; dailyCount[d]++;
+          totalEff+=hrs.eff; totalSal+=dsal;
+          row+=`<td class="day-cell ${bgCls}" onclick="openEditor('${emp.id}','${dk}')">
+            <div class="cell-work">
+              <div class="cell-time">${fmt2(emp.sh,emp.sm)}-${fmt2(emp.eh,emp.em)}</div>
+              <div class="cell-hours">${fmtH(hrs.eff)}</div>
+              <div class="cell-sal">${fmtMoney(dsal)}</div>
+            </div></td>`;
+        }
+      } else if(LEAVE.includes(cell.type)){
+        const lv=cell.type;
+        if(lv==='例假')L1++;else if(lv==='休假')L2++;else if(lv==='國假')L3++;else L4++;
+        // Monthly workers still earn on leave
+        const dsal=calcDailySalary(empType,0,true);
+        dailySalary[d]+=dsal; totalSal+=dsal;
+        row+=`<td class="day-cell ${bgCls}" onclick="openEditor('${emp.id}','${dk}')">
+          <div class="cell-leave ${lv}" style="color:${LEAVE_COLORS[lv]}">${lv}</div>
+          <div style="font-size:9px;color:var(--text3)">${fmtMoney(dsal)}</div>
+        </td>`;
+      } else {
+        const sh_=cell.sh||0,sm_=cell.sm||0,eh_=cell.eh||0,em_=cell.em||0;
+        const hrs=calcHours(sh_,sm_,eh_,em_);
+        const dsal=calcDailySalary(empType,hrs.eff,false);
+        const schType=document.getElementById('schedule-type').value;
+        const maxH=schType.includes('四週')?10:8;
+        const warnH=hrs.eff>maxH;
+        dailyHours[d]+=hrs.eff; dailySalary[d]+=dsal; dailyCount[d]++;
+        totalEff+=hrs.eff; totalSal+=dsal;
+        row+=`<td class="day-cell ${bgCls}${warnH?' hours-warn':''}" onclick="openEditor('${emp.id}','${dk}')">
+          <div class="cell-work">
+            <div class="cell-time">${fmt2(sh_,sm_)}-${fmt2(eh_,em_)}</div>
+            <div class="cell-hours">${fmtH(hrs.eff)}${hrs.ot>0?` +${fmtH(hrs.ot)}OT`:''}</div>
+            <div class="cell-sal">${fmtMoney(dsal)}</div>
+          </div></td>`;
+      }
+    }
+
+    // Summary
+    const STD=176;
+    const diff=totalEff-STD;
+    const diffCls=diff>=0?'pos':'neg';
+    const schType=document.getElementById('schedule-type').value;
+    let warn='✓ 符合';
+    if(schType.includes('四週')&&totalEff>160) warn='⚠ 逾160h';
+    else if(!schType.includes('四週')&&totalEff>200) warn='⚠ 工時超標';
+    else if(L1<4&&!schType.includes('四週')) warn='⚠ 例假不足';
+    else if((L1+L2+L3+L4)<8&&!schType.includes('四週')) warn='⚠ 休假不足';
+
+    row+=`<td class="sum-cell">
+      <div class="sum-val">${fmtH(totalEff)}</div>
+      <div class="sum-diff ${diffCls}">${diff>=0?'+':''}${fmtH(diff)}</div>
+    </td>`;
+    row+=`<td class="sum-cell"><div class="sum-val" style="color:var(--gold)">${fmtMoney(totalSal)}</div></td>`;
+    row+=`<td class="sum-cell"><div class="sum-val">${L1}</div></td>`;
+    row+=`<td class="sum-cell"><div class="sum-val">${L2}</div></td>`;
+    row+=`<td class="sum-cell"><div class="sum-val">${L3}</div></td>`;
+    row+=`<td class="sum-cell"><div class="sum-val">${L4}</div></td>`;
+    row+=`<td class="sum-cell"><div class="${warn.startsWith('⚠')?'warn-bad':'warn-ok'}">${warn}</div></td>`;
+    row+=`</tr>`;
+    h+=row;
+  }
+
+  // ─ Daily summary rows ─
+  h+=`<tr><td class="section-row sticky-left" colspan="${days+8}">每日彙整</td></tr>`;
+
+  // 上班人數
+  h+=`<tr><td class="emp-meta sticky-left" style="color:var(--green);font-size:11px">每日上班人數</td>`;
+  let totalCount=0;
+  for(let d=1;d<=days;d++){
+    h+=`<td class="metric-cell"><div class="metric-val green">${dailyCount[d]}</div></td>`;
+    totalCount+=dailyCount[d];
+  }
+  h+=`<td class="sum-cell"><div class="sum-val">${totalCount}</div></td><td colspan="7"></td></tr>`;
+
+  // 人事薪資
+  h+=`<tr><td class="emp-meta sticky-left" style="color:var(--gold);font-size:11px">每日人事薪資</td>`;
+  let totalMonthlySal=0;
+  for(let d=1;d<=days;d++){
+    h+=`<td class="metric-cell"><div class="metric-val gold">${fmtMoney(dailySalary[d])}</div></td>`;
+    totalMonthlySal+=dailySalary[d];
+  }
+  h+=`<td class="sum-cell"><div class="sum-val" style="color:var(--gold)">${fmtMoney(totalMonthlySal)}</div></td><td colspan="7"></td></tr>`;
+
+  // ─ Revenue rows ─
+  h+=`<tr><td class="section-row sticky-left" colspan="${days+8}">當日營業額（手動輸入）</td></tr>`;
+  const revFields=['現金','信用卡','行動支付','外送平台','訂單','其他'];
+  const dailyRev=new Array(days+1).fill(0);
+  let totalRevAll=0;
+
+  for(const field of revFields){
+    h+=`<tr><td class="emp-meta sticky-left" style="font-size:11px;color:var(--text2)">${field}</td>`;
+    let rowTotal=0;
+    for(let d=1;d<=days;d++){
+      const dk=dateKey(y,m,d);
+      const rv=getRevenue(dk);
+      const val=rv[field]||0;
+      dailyRev[d]+=val; rowTotal+=val;
+      h+=`<td class="metric-cell">
+        <input class="rev-input" type="number" value="${val||''}" placeholder="0"
+          onchange="setRevenue('${dk}','${field}',+this.value);refreshTable()"
+          onclick="event.stopPropagation()">
+      </td>`;
+    }
+    h+=`<td class="sum-cell"><div class="metric-val gold">${fmtMoney(rowTotal)}</div></td><td colspan="7"></td></tr>`;
+    totalRevAll+=rowTotal;
+  }
+
+  // 當日營業額合計
+  h+=`<tr><td class="emp-meta sticky-left" style="font-weight:700;font-size:11px;color:var(--teal)">當日營業額</td>`;
+  for(let d=1;d<=days;d++){
+    h+=`<td class="metric-cell"><div class="metric-val blue">${fmtMoney(dailyRev[d])}</div></td>`;
+  }
+  h+=`<td class="sum-cell"><div class="sum-val" style="color:var(--teal)">${fmtMoney(totalRevAll)}</div></td><td colspan="7"></td></tr>`;
+
+  // 人事費用%
+  h+=`<tr><td class="emp-meta sticky-left" style="font-size:11px;color:var(--gold)">人事費用 %</td>`;
+  for(let d=1;d<=days;d++){
+    const pct=dailyRev[d]>0?dailySalary[d]/dailyRev[d]:null;
+    const color=pct===null?'var(--text3)':pct>0.35?'var(--red)':pct>0.25?'var(--orange)':'var(--green)';
+    h+=`<td class="metric-cell"><div class="metric-val" style="color:${color}">${pct===null?'─':(pct*100).toFixed(1)+'%'}</div></td>`;
+  }
+  const totalPct=totalRevAll>0?totalMonthlySal/totalRevAll:null;
+  h+=`<td class="sum-cell"><div class="sum-val" style="color:var(--gold)">${totalPct===null?'─':(totalPct*100).toFixed(1)+'%'}</div></td><td colspan="7"></td></tr>`;
+
+  // 每人日產能
+  h+=`<tr><td class="emp-meta sticky-left" style="font-size:11px;color:var(--green)">每人日產能</td>`;
+  for(let d=1;d<=days;d++){
+    const prod=dailyCount[d]>0?Math.round(dailyRev[d]/dailyCount[d]):null;
+    h+=`<td class="metric-cell"><div class="metric-val green">${prod===null||prod===0?'─':fmtMoney(prod)}</div></td>`;
+  }
+  const avgProd=totalCount>0?Math.round(totalRevAll/totalCount):null;
+  h+=`<td class="sum-cell"><div class="sum-val" style="color:var(--green)">${avgProd===null?'─':fmtMoney(avgProd)+'元'}</div></td><td colspan="7"></td></tr>`;
+
+  h+=`</tbody>`;
+  tb.innerHTML=h;
+}
+
+function fmt2(h,m){return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');}
+
+// ═══ EDITOR ═══
+function openEditor(empId, dk){
+  editEmp=empId; editDate=dk;
+  const emp=staff.find(e=>e.id===empId);
+  const dt=new Date(dk); const d=dt.getDate();
+  const dow=DOW_ZH[dt.getDay()];
+  document.getElementById('editor-title').textContent=
+    `${emp.name} ─ ${curMonth}月${d}日 (${dow})`;
+  const cell=getCell(empId,dk);
+  if(cell&&LEAVE.includes(cell.type)){
+    editType=cell.type;
+  } else {
+    editType='上班';
+    const sh_=cell?.sh??emp.sh; const sm_=cell?.sm??emp.sm;
+    const eh_=cell?.eh??emp.eh; const em_=cell?.em??emp.em;
+    document.getElementById('e-sh').value=sh_;
+    document.getElementById('e-sm').value=sm_;
+    document.getElementById('e-eh').value=eh_;
+    document.getElementById('e-em').value=em_;
+  }
+  updateTypeUI();
+  editorCalc();
+  document.getElementById('editor').style.display='block';
+  // highlight
+  document.querySelectorAll('.day-cell.editing').forEach(c=>c.classList.remove('editing'));
+  const col=Array.from(document.querySelectorAll('.day-cell')).find(c=>c.onclick?.toString().includes(empId)&&c.onclick?.toString().includes(dk));
+  if(col) col.classList.add('editing');
+}
+function closeEditor(){
+  document.getElementById('editor').style.display='none';
+  editEmp=null; editDate=null;
+  document.querySelectorAll('.day-cell.editing').forEach(c=>c.classList.remove('editing'));
+}
+function setEType(t){editType=t;updateTypeUI();editorCalc();}
+function updateTypeUI(){
+  document.querySelectorAll('.type-btn').forEach(b=>{
+    const lbl=b.textContent.trim();
+    b.className='type-btn'+(editType===lbl?` active-${lbl}`:'');
+  });
+  document.getElementById('time-area').style.display=editType==='上班'?'block':'none';
+}
+function editorCalc(){
+  if(editType!=='上班') return;
+  const sh=+document.getElementById('e-sh').value;
+  const sm=+document.getElementById('e-sm').value;
+  const eh=+document.getElementById('e-eh').value;
+  const em=+document.getElementById('e-em').value;
+  const h=calcHours(sh,sm,eh,em);
+  document.getElementById('cv-eff').textContent=fmtH(h.eff);
+  document.getElementById('cv-reg').textContent=fmtH(h.reg);
+  document.getElementById('cv-ot').textContent=fmtH(h.ot);
+  document.getElementById('cv-brk').textContent=fmtH(h.brk);
+  const dur=h.eff+h.brk;
+  let note='';
+  if(dur>8) note='勞基法§35：工作超過8小時，扣除1小時休息時間';
+  else if(dur>4) note='勞基法§35：工作超過4小時，扣除30分鐘休息時間';
+  else note='勞基法§35：工作4小時內，無強制休息';
+  if(h.ot>0) note+=`\n§24 加班費：前2小時×1.33、第3小時起×1.67`;
+  document.getElementById('law-note').style.whiteSpace='pre-line';
+  document.getElementById('law-note').textContent=note;
+}
+function applyEditor(){
+  if(!editEmp||!editDate) return;
+  if(editType==='上班'){
+    setCell(editEmp,editDate,{
+      type:'work',
+      sh:+document.getElementById('e-sh').value,
+      sm:+document.getElementById('e-sm').value,
+      eh:+document.getElementById('e-eh').value,
+      em:+document.getElementById('e-em').value
+    });
+  } else {
+    setCell(editEmp,editDate,{type:editType});
+  }
+  closeEditor();
+  refreshTable();
+}
+</script>
+</body>
+</html>
